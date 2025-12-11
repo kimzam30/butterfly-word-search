@@ -5,7 +5,7 @@ A real-time multiplayer, offline-capable Progressive Web App (PWA) word search g
 🔗 **Play Live:** [https://butterflywordsearch.web.app](https://butterflywordsearch.web.app)
 
 ![Game Screenshot](./public/images/icon-512.png) 
-*(Note: You can replace this line with a real screenshot later)*
+
 
 ## ✨ Key Features
 
