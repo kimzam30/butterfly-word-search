@@ -14,7 +14,7 @@ window.App = {
 
     // STATE
     state: {
-        user: null, // NEW: Authentication User Object
+        user: null, 
         grid: [], size: 10, words: [], found: [],
         selecting: false, selectStart: null, selectedCells: [],
         timer: 0, timerInt: null, score: 0,
@@ -44,7 +44,7 @@ window.App = {
                 this.db = firebase.database(); 
                 console.log("Firebase OK"); 
 
-                // NEW: AUTH OBSERVER
+                // AUTH OBSERVER
                 firebase.auth().onAuthStateChanged((user) => {
                     if (user) {
                         this.handleUserLogin(user);
@@ -69,12 +69,12 @@ window.App = {
         this.applySettings();
     },
 
-    // --- AUTHENTICATION (NEW) ---
+    // --- AUTHENTICATION ---
     login: function() {
         const provider = new firebase.auth.GoogleAuthProvider();
         firebase.auth().signInWithPopup(provider)
             .then((result) => {
-                // Success is handled by onAuthStateChanged
+                // Success handled by onAuthStateChanged
             })
             .catch((error) => {
                 alert("Login Failed: " + error.message);
@@ -87,17 +87,14 @@ window.App = {
 
     handleUserLogin: function(user) {
         this.state.user = user;
-        // Use their Google Name for the game
         this.state.playerName = user.displayName.split(" ")[0]; 
         
-        // Update UI
         document.getElementById('btn-login').style.display = 'none';
         const userInfo = document.getElementById('user-info');
         userInfo.style.display = 'flex';
         document.getElementById('user-name').innerText = user.displayName;
         document.getElementById('user-pic').src = user.photoURL;
         
-        // Auto-fill multiplayer name field
         const nameInput = document.getElementById('player-name-input');
         if(nameInput) nameInput.value = this.state.playerName;
     },
@@ -243,7 +240,7 @@ window.App = {
         modal.classList.add('active'); 
     },
 
-    // --- MULTIPLAYER ---
+    // --- MULTIPLAYER (UPDATED) ---
     submitName: function() { 
         this.state.playerName = document.getElementById('player-name-input').value || "Guest"; 
         document.getElementById('welcome-msg').innerText = this.state.playerName; 
@@ -255,42 +252,75 @@ window.App = {
         container.querySelectorAll('.tab-btn').forEach(x => x.classList.remove('active')); 
         btn.classList.add('active'); 
     },
+    
+    // SECURITY UPDATE: Saving UID as host
     createRoom: function() {
         if(!this.db) return alert("Firebase not ready");
+        if(!this.state.user) return alert("You must be logged in to host!");
+
         this.state.roomCode = Math.random().toString(36).substring(2, 6).toUpperCase();
         this.state.playerRole = 'host';
         const settings = this.CONFIG[this.state.multiDiff];
         this.state.size = settings.size;
         this.state.words = this.getWords(this.state.multiDiff);
         this.generateGrid(); 
+        
         this.db.ref('rooms/' + this.state.roomCode).set({
-            status: "waiting", difficulty: this.state.multiDiff, grid: this.state.grid, words: this.state.words, foundWords: {}, host: this.state.playerName
+            status: "waiting", 
+            difficulty: this.state.multiDiff, 
+            grid: this.state.grid, 
+            words: this.state.words, 
+            foundWords: {}, 
+            host: this.state.user.uid,       // SECURE: User ID
+            hostName: this.state.playerName  // DISPLAY: Player Name
         });
+        
         this.showScreen('screen-multi-lobby');
         this.monitorRoom(); 
     },
+
+    // SECURITY UPDATE: Saving UID as guest
     joinRoom: function() {
         const code = document.getElementById('room-code-input').value.toUpperCase();
         if(!code) return alert("Enter code");
+        if(!this.state.user) return alert("You must be logged in to join!");
+
         this.db.ref('rooms/' + code).once('value', snap => {
             if (snap.exists()) {
-                this.state.roomCode = code; this.state.playerRole = 'guest';
-                this.db.ref('rooms/' + code).update({ guest: this.state.playerName });
+                this.state.roomCode = code; 
+                this.state.playerRole = 'guest';
+                
+                this.db.ref('rooms/' + code).update({ 
+                    guest: this.state.user.uid,       // SECURE: User ID
+                    guestName: this.state.playerName  // DISPLAY: Player Name
+                });
+                
                 this.showScreen('screen-multi-lobby');
                 this.monitorRoom(); 
             } else alert("Room not found");
         });
     },
+
+    // UI UPDATE: Reading hostName/guestName
     monitorRoom: function() {
         document.getElementById('lobby-code').innerText = this.state.roomCode;
         const startBtn = document.getElementById('btn-start-multi');
+        
         if(this.state.playerRole === 'guest') startBtn.style.display = 'none';
         else startBtn.style.display = 'block';
+
         this.db.ref('rooms/' + this.state.roomCode).on('value', snap => {
             const data = snap.val();
             if(!data) return;
             const list = document.querySelector('.player-list');
-            list.innerHTML = `<label>Players</label><div class="player-item"><span>${data.host}</span><span class="crown">👑</span></div>${data.guest ? `<div class="player-item"><span>${data.guest}</span><span>👤</span></div>` : `<div class="player-item" style="opacity:0.5; border-style:dashed"><span>Waiting for guest...</span></div>`}`;
+            
+            const hostDisplay = data.hostName || "Unknown Host";
+            const guestDisplay = data.guestName ? 
+                `<div class="player-item"><span>${data.guestName}</span><span>👤</span></div>` : 
+                `<div class="player-item" style="opacity:0.5; border-style:dashed"><span>Waiting for guest...</span></div>`;
+
+            list.innerHTML = `<label>Players</label><div class="player-item"><span>${hostDisplay}</span><span class="crown">👑</span></div>${guestDisplay}`;
+
             if (data.status === 'waiting') {
                 const inGame = document.getElementById('screen-game').classList.contains('active');
                 const inGameOver = document.getElementById('modal-gameover').classList.contains('active');
@@ -304,6 +334,7 @@ window.App = {
             }
         });
     },
+
     startMultiGame: function() { 
         this.state.words = this.getWords(this.state.multiDiff);
         this.generateGrid();
@@ -327,7 +358,7 @@ window.App = {
     },
     leaveRoom: function() { if(this.state.roomCode) this.db.ref('rooms/' + this.state.roomCode).off(); this.state.roomCode = ""; this.showScreen('screen-multi-setup'); },
     
-    // --- SETTINGS: STRICT MANUAL CONTROL ---
+    // --- SETTINGS ---
     openSettings: function() { 
         document.getElementById('vol-master').value = this.state.volumes.master; 
         document.getElementById('vol-rain').value = this.state.volumes.rain; 
