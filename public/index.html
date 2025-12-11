@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Word Search by kimzam</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#FFF0F5">
+    
+    <link rel="icon" type="image/png" href="images/icon-192.png">
+    <link rel="apple-touch-icon" href="images/icon-192.png">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script> <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <audio id="audio-lofi" loop preload="auto"></audio>
+    <audio id="audio-rain" loop src="audio/ambience/rain.mp3" preload="auto"></audio>
+    <audio id="audio-wind" loop src="audio/ambience/wind.mp3" preload="auto"></audio>
+    <audio id="audio-birds" loop src="audio/ambience/birds.mp3" preload="auto"></audio>
+
+    <div class="butterfly-bg"></div>
+
+    <div class="app-container">
+        
+        <section id="screen-menu" class="screen active">
+            <div class="card-container centered bounce-in">
+                <button class="settings-btn top-right" onclick="window.App.openSettings()">⚙️</button>
+                <div class="logo-area">
+                    <div class="butterfly-icon-lg">🦋</div>
+                    <h1>Word Search</h1>
+                    <p class="subtitle">Find the hidden words!</p>
+                </div>
+
+                <div id="auth-container" style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">
+                    <button id="btn-login" class="btn-outline" onclick="window.App.login()" style="display:flex; align-items:center; justify-content:center; gap:10px;">
+                        <span style="font-size:1.2rem;">G</span> Sign in with Google
+                    </button>
+                    
+                    <div id="user-info" style="display: none; align-items: center; justify-content: center; gap: 12px;">
+                        <img id="user-pic" src="" style="width:45px; height:45px; border-radius:50%; border: 2px solid var(--primary); padding: 2px;">
+                        <div style="text-align:left;">
+                            <div id="user-name" style="font-weight:800; font-size:1rem; color:var(--text-main);">Player</div>
+                            <button class="btn-text" onclick="window.App.logout()" style="padding:0; font-size:0.85rem; color:var(--primary);">Sign Out</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="menu-buttons">
+                    <button class="btn-main btn-pink-grad" onclick="window.App.showDifficulty()"><span>👤 Solo Mode</span></button>
+                    <button class="btn-main btn-purple-grad" onclick="window.App.goToMultiName()"><span>👥 Multiplayer</span></button>
+                    <button class="btn-main btn-white" onclick="window.App.openOfflinePage()"><span>📡 Offline Mode</span></button>
+                    <button class="btn-text" onclick="window.App.showAbout()">ℹ️ About & Roadmap</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="screen-difficulty" class="screen">
+            <div class="card-container centered">
+                <h2 class="screen-title" style="color:#F43F5E">Select Difficulty</h2>
+                <div class="difficulty-stack">
+                    <button class="btn-diff btn-easy" onclick="window.App.startGame('easy')"><span>Easy</span> <span>10x10</span></button>
+                    <button class="btn-diff btn-medium" onclick="window.App.startGame('medium')"><span>Medium</span> <span>12x12</span></button>
+                    <button class="btn-diff btn-hard" onclick="window.App.startGame('hard')"><span>Hard</span> <span>15x15</span></button>
+                </div>
+                <button class="btn-text" onclick="window.App.showMenu()">← Back</button>
+            </div>
+        </section>
+
+        <section id="screen-multi-name" class="screen">
+            <div class="card-container centered">
+                <div class="logo-area"><div class="butterfly-icon-md">🦋</div><h2 class="screen-title">Multiplayer</h2></div>
+                <div class="input-group"><label>Your Name</label><input type="text" id="player-name-input" placeholder="Enter your name" class="input-field"></div>
+                <button class="btn-main btn-pink-grad" onclick="window.App.submitName()">Continue</button>
+                <button class="btn-text" onclick="window.App.showMenu()">← Back</button>
+            </div>
+        </section>
+
+        <section id="screen-multi-setup" class="screen">
+            <div class="card-container centered">
+                <div class="logo-area"><div class="butterfly-icon-md">🦋</div><h2 class="screen-title">Multiplayer</h2><p class="welcome-text" id="welcome-msg">Welcome!</p></div>
+                <div class="setup-section">
+                    <label class="section-label">Select Difficulty</label>
+                    <div class="tabs-row">
+                        <button class="tab-btn active" onclick="window.App.selectMultiDiff('easy', this)">Easy</button>
+                        <button class="tab-btn" onclick="window.App.selectMultiDiff('medium', this)">Medium</button>
+                        <button class="tab-btn" onclick="window.App.selectMultiDiff('hard', this)">Hard</button>
+                    </div>
+                    <button class="btn-main btn-pink-grad" style="margin-top:1rem;" onclick="window.App.createRoom()">👑 Create Room</button>
+                </div>
+                <div class="divider-text"><span>or</span></div>
+                <div class="setup-section">
+                    <input type="text" placeholder="Enter room code" id="room-code-input" class="input-field outline center-text">
+                    <button class="btn-outline" onclick="window.App.joinRoom()">Join Room</button>
+                </div>
+                <button class="btn-text" onclick="window.App.goToMultiName()">← Back</button>
+            </div>
+        </section>
+
+        <section id="screen-multi-lobby" class="screen">
+            <div class="card-container centered">
+                <div class="logo-area"><div class="butterfly-icon-md">🦋</div><h2 class="screen-title">Multiplayer</h2></div>
+                <div class="room-code-box"><label>Room Code</label><div class="code-text" id="lobby-code">----</div></div>
+                <div class="player-list"><label>Players</label><div class="player-item"><span id="lobby-player-name">Waiting...</span><span class="crown">👑</span></div></div>
+                <button id="btn-start-multi" class="btn-main btn-green-grad" onclick="window.App.startMultiGame()">▶ Start Game</button>
+                <button class="btn-text" onclick="window.App.leaveRoom()">Leave Room</button>
+            </div>
+        </section>
+
+        <section id="screen-game" class="screen">
+            <nav class="game-nav">
+                <button class="nav-item" onclick="window.App.showMenu()"><span>🏠</span> Menu</button>
+                <div class="game-title-text">Word Search</div>
+                <button class="nav-item" onclick="window.App.restartGame()"><span>🔄</span> Refresh</button>
+            </nav>
+            <div class="status-bar-pill">
+                <div class="stat-item"><span class="icon">🕒</span> <span id="timer">00:00</span></div><div class="divider"></div>
+                <div class="stat-item"><span class="icon">🏆</span> <span id="score">0</span></div><div class="divider"></div>
+                <div class="badge-pill" id="game-difficulty-badge">EASY</div>
+                <button class="settings-btn game-pos" onclick="window.App.openSettings()">⚙️</button>
+            </div>
+            <div class="game-layout">
+                <div class="grid-card"><div id="game-grid" class="grid-container"></div></div>
+                <div class="list-card">
+                    <h3>Words to Find</h3><div id="word-list" class="words-container"></div>
+                    <div class="progress-area"><span id="found-count">0</span> / <span id="total-count">0</span> found</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="screen-offline" class="screen">
+            <div class="nav-header">
+                <button class="btn-text" onclick="window.App.showMenu()">🏠 Back</button>
+                <h2>Offline</h2>
+                <button class="btn-text" onclick="window.App.refreshOffline()">🔄 New Set</button>
+            </div>
+            <div class="scroll-wrapper"><div id="offline-grid" class="offline-grid"></div></div>
+        </section>
+
+        <section id="screen-about" class="screen">
+            <div class="card-container centered bounce-in" style="max-height: 85vh; overflow-y: auto;">
+                <div class="about-header">
+                    <div class="dev-avatar">👨‍💻</div>
+                    <div class="dev-info">
+                        <h3>kimzam <span class="beta-badge">DEV</span></h3>
+                        <p>Creator & Developer</p>
+                    </div>
+                </div>
+                <p style="text-align: left; font-size: 0.9rem; color: var(--text-main); margin-bottom: 1rem;">
+                    Hi! I'm building this app to learn web development. It's still in the <b>Early Beta</b> stage, so expect some bugs! 🦋
+                </p>
+                <span class="section-title">🚀 Future Roadmap</span>
+                <ul class="roadmap-list">
+                    <li class="roadmap-item done"><span class="icon">✅</span> Multiplayer Mode</li>
+                    <li class="roadmap-item done"><span class="icon">✅</span> Offline Support (PWA)</li>
+                    <li class="roadmap-item done"><span class="icon">✅</span> User Accounts</li>
+                    <li class="roadmap-item"><span class="icon">🚧</span> Global Leaderboard</li>
+                    <li class="roadmap-item"><span class="icon">⏳</span> Hint System</li>
+                </ul>
+                <span class="section-title">📬 Send Feedback</span>
+                <div class="feedback-area">
+                    <select id="fb-type" class="feedback-select">
+                        <option value="suggestion">💡 Suggestion</option>
+                        <option value="bug">🐛 Bug Report</option>
+                        <option value="love">❤️ Just saying hi</option>
+                    </select>
+                    <textarea id="fb-msg" class="feedback-input" rows="3" placeholder="Type your message here..."></textarea>
+                    <button class="btn-main btn-green-grad" onclick="window.App.sendFeedback()" id="btn-send-fb">Send Message</button>
+                </div>
+                <button class="btn-text" onclick="window.App.showMenu()">← Back to Menu</button>
+            </div>
+        </section>
+
+        <div id="modal-settings" class="modal-overlay">
+            <div class="card-container settings-card bounce-in">
+                <div class="modal-header"><h2>Settings</h2><button class="btn-close" onclick="window.App.closeSettings()">✕</button></div>
+                <div class="slider-container">
+                    <div class="slider-label"><span>Master Volume</span> <span id="val-master" class="slider-value">100%</span></div>
+                    <input type="range" id="vol-master" min="0" max="1" step="0.1" value="1" oninput="window.App.setMasterVolume(this.value)">
+                </div>
+                <div class="setting-row">
+                    <div class="label-icon"><span class="icon">🌙</span> Dark Mode</div>
+                    <label class="switch"><input type="checkbox" id="toggle-darkmode" onchange="window.App.toggleDarkMode()"><span class="slider-switch round"></span></label>
+                </div>
+                <hr class="divider-line">
+                <div class="setting-group" style="margin-bottom: 1.5rem;">
+                    <label class="group-label">🎵 Lofi Music</label>
+                    <select id="lofi-select" class="input-field mb-2" onchange="window.App.changeLofiTrack(this.value)">
+                        <option value="none">OFF</option><option value="chill">Chill Beats</option><option value="sleepy">Sleepy Vibes</option><option value="piano">Piano Relax</option>
+                    </select>
+                    <div class="slider-container">
+                        <div class="slider-label"><span>Music Volume</span> <span id="val-lofi" class="slider-value">50%</span></div>
+                        <input type="range" id="vol-lofi" min="0" max="1" step="0.1" value="0.5" oninput="window.App.setTrackVolume('lofi', this.value)">
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <label class="group-label">🍃 Ambience</label>
+                    <div class="slider-container"><div class="slider-label"><span>🌧️ Rain</span> <span id="val-rain" class="slider-value">0%</span></div><input type="range" id="vol-rain" min="0" max="1" step="0.1" value="0" oninput="window.App.setTrackVolume('rain', this.value)"></div>
+                    <div class="slider-container"><div class="slider-label"><span>💨 Wind</span> <span id="val-wind" class="slider-value">0%</span></div><input type="range" id="vol-wind" min="0" max="1" step="0.1" value="0" oninput="window.App.setTrackVolume('wind', this.value)"></div>
+                    <div class="slider-container"><div class="slider-label"><span>🐦 Birds</span> <span id="val-birds" class="slider-value">0%</span></div><input type="range" id="vol-birds" min="0" max="1" step="0.1" value="0" oninput="window.App.setTrackVolume('birds', this.value)"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="modal-gameover" class="modal-overlay">
+            <div class="card-container settings-card bounce-in" style="text-align: center;">
+                <div class="butterfly-icon-md" id="go-icon">🏆</div><h2 id="go-title">Finished!</h2><p class="subtitle" id="go-msg">Great job!</p>
+                <div class="stats-result-box"><div class="stat-col"><span class="lbl">Time</span><span class="val" id="final-time">00:00</span></div><div class="divider-v"></div><div class="stat-col"><span class="lbl">Score</span><span class="val" id="final-score">0</span></div></div>
+                <button class="btn-main btn-green-grad full-width" onclick="window.App.restartGame()"><span>🔄 Play Again</span></button>
+                <button class="btn-outline full-width" style="margin-top:10px;" onclick="window.App.changeDifficulty()"><span>⚙️ Change Difficulty</span></button>
+                <button class="btn-text" style="margin-top:10px;" onclick="window.App.showMenu()">Back to Home</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('Service Worker Registered!', reg))
+                    .catch(err => console.log('Service Worker Failed', err));
+            });
+        }
+    </script>
+</body>
+</html>
